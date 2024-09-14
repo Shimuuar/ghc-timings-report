@@ -1,7 +1,9 @@
 -- |
 module GhcTimings.Types where
 
+import Control.Monad
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Csv        (ToNamedRecord,FromNamedRecord)
 import Data.Text       (Text)
 import Data.Version
@@ -59,21 +61,27 @@ data Phase = Phase
 ----------------------------------------------------------------
 
 instance FromJSON CompName where
-  parseJSON o = parseJSON o >>= \case
-    'l':'/':s -> pure $ SubLib s
-    'x':'/':s -> pure $ Exe    s
-    't':'/':s -> pure $ Test   s
-    'b':'/':s -> pure $ Bench  s
-    "build"   -> pure MainLib
-    s         -> fail $ "Incorect CompName:" ++ s
-
+  parseJSON = parseCompName <=< parseJSON
 instance ToJSON CompName where
-  toJSON = toJSON . \case
-    SubLib s -> 'l':'/':s
-    Exe    s -> 'x':'/':s
-    Test   s -> 't':'/':s
-    Bench  s -> 'b':'/':s
-    MainLib  -> "build"
+  toJSON = toJSON . encodeCompName
+instance FromJSONKey CompName where
+  fromJSONKey = FromJSONKeyTextParser parseCompName
+instance ToJSONKey   CompName where
+  toJSONKey = toJSONKeyText (T.pack . encodeCompName)
 
-instance FromJSONKey CompName
-instance ToJSONKey   CompName
+encodeCompName :: CompName -> String
+encodeCompName = \case
+  SubLib s -> 'l':'/':s
+  Exe    s -> 'x':'/':s
+  Test   s -> 't':'/':s
+  Bench  s -> 'b':'/':s
+  MainLib  -> "build"
+
+parseCompName :: Text -> Parser CompName
+parseCompName str = case T.unpack str of
+  'l':'/':s -> pure $ SubLib s
+  'x':'/':s -> pure $ Exe    s
+  't':'/':s -> pure $ Test   s
+  'b':'/':s -> pure $ Bench  s
+  "build"   -> pure MainLib
+  s         -> fail $ "Incorect CompName:" ++ s
