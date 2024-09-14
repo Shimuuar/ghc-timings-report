@@ -17,13 +17,15 @@ data-files:          files/*.gnuplot
                      files/*.css
 
 library
-  default-language:    Haskell2010
-  default-extensions:  DerivingStrategies
-                       DeriveGeneric
-                       DeriveAnyClass
+  default-language:    GHC2021
+  default-extensions:  NoPolyKinds
                        DerivingVia
                        LambdaCase
-                       ImportQualifiedPost
+                       DeriveAnyClass
+                       --
+                       NoFieldSelectors
+                       DuplicateRecordFields
+                       OverloadedRecordDot
   build-depends:       base            >= 4.13
                      , aeson           >= 2
                      , cassava

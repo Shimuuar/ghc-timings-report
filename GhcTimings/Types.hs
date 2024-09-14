@@ -1,5 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE NoFieldSelectors      #-}
 -- |
 module GhcTimings.Types where
 
@@ -31,7 +29,7 @@ data Package a = Package
   , version    :: Version        -- ^ Version of package
   , components :: Map CompName a -- ^ All components of a package
   }
-  deriving stock    (Generic, Eq, Show)
+  deriving stock    (Generic, Eq, Show, Functor, Foldable, Traversable)
   deriving anyclass (ToJSON, FromJSON)
 
 -- | Infomation about component of a package

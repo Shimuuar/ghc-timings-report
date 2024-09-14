@@ -1,14 +1,12 @@
-{-# LANGUAGE ApplicativeDo       #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE QuasiQuotes         #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE ApplicativeDo   #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns    #-}
 -- |
 -- Collection of 
 module GhcTimings.Collect
-  ( findPackages
+  ( loadDumpTimings
+  , findPackages
+  , findDumpTimings
   ) where
 
 import Control.Applicative
@@ -22,9 +20,12 @@ import Data.Function
 import Data.List         (stripPrefix)
 import Data.Version
 import Data.Maybe
+import Data.Traversable
 import Data.Map.Strict   qualified as Map
+import Data.Map.Strict   (Map)
 import Data.Text.IO      qualified as T
 import Data.Text         qualified as T
+import Data.Text         (Text)
 import System.FilePath
 import System.Directory
 import Streaming.Prelude qualified as S
@@ -36,6 +37,24 @@ import Text.Regex.Applicative
 -- import Control.Lens.Regex.Text qualified as RE
 
 import GhcTimings.Types
+
+loadDumpTimings
+  :: FilePath
+     -- ^ Path to directory containing @dist-newstyle@ build directory
+  -> IO [Package ([Phase], Map Text [Phase])]
+loadDumpTimings
+  = (traverse . traverse) load <=< findPackages
+  where
+    load dir = do
+      phases <- S.toList_
+              $ S.map (\ph -> (asum ((.mod) <$> ph), ph))
+              $ parseDumpTiming
+              $ findDumpTimings dir
+      pure ( [ p | (Nothing, ps) <- phases
+                 , p <- ps
+                 ]
+           , Map.fromList [ (k,v) | (Just k, v) <- phases ]
+           )
 
 
 ----------------------------------------------------------------
@@ -107,10 +126,10 @@ findDumpTimings dir = do
           -> pure ()
 
 parseDumpTiming :: Stream (Of FilePath) IO ()
-                -> Stream (Of (FilePath, [Phase])) IO ()
+                -> Stream (Of [Phase])  IO ()
 parseDumpTiming paths = S.for paths $ \p -> do
   timing <- liftIO $ parsePhases <$> T.readFile p
-  S.yield (p, timing)
+  S.yield timing
 
 -- | Parse .dump-timing file produced by GHC. This is very ad-hoc
 --   regexp based parser. Hopefully it will parse files correctly
