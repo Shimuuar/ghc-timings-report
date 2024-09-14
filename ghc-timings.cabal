@@ -42,11 +42,18 @@ library
                      , containers
                      , transformers
                      , filepath
+                     , lens
+                     , split
                      , directory
+                       -- HTML stuff
+                     , blaze-colonnade
+                     , blaze-html
+                     , blaze-markup
+                     , colonnade
   exposed-modules:
                  GhcTimings.Types
                  GhcTimings.Collect
-
+                 GhcTimings.Report
 
 executable ghc-timings
   import:              extensions
@@ -58,7 +65,13 @@ executable ghc-timings
                      , aeson
                      , bytestring
                      , optparse-applicative
+                     , directory
+                     , filepath
+                     , blaze-markup
+                     , containers
+                     , text
 
+--                     , blaze-html
 
 -- executable ghc-timings
 --   main-is:             Main.hs

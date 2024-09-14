@@ -29,6 +29,11 @@ td.module {
   font-weight: bold;
 }
 
+th.header {
+    font-weight: bold;
+    background-color: #aaaaff;
+}
+
 table td.lev1 {
   background-color: yellow;
 }
