@@ -16,7 +16,10 @@ extra-source-files:  CHANGELOG.md
 data-files:          files/*.gnuplot
                      files/*.css
 
-library
+
+----------------------------------------------------------------
+
+common extensions
   default-language:    GHC2021
   default-extensions:  NoPolyKinds
                        DerivingVia
@@ -26,6 +29,10 @@ library
                        NoFieldSelectors
                        DuplicateRecordFields
                        OverloadedRecordDot
+
+
+library
+  import:              extensions
   build-depends:       base            >= 4.13
                      , aeson           >= 2
                      , cassava
@@ -40,45 +47,58 @@ library
                  GhcTimings.Types
                  GhcTimings.Collect
 
+
 executable ghc-timings
+  import:              extensions
   main-is:             Main.hs
-  autogen-modules:     Paths_ghc_timings
-  other-modules:       Compare
-                       GhcFile
-                       GhcBuildPhase
-                       Generate
-                       Report
-                       Paths_ghc_timings
-  hs-source-dirs:      src
-                       .
-  default-extensions:  DerivingStrategies
-                       DeriveGeneric
-                       DeriveAnyClass
-                       DerivingVia
-                       LambdaCase
-                       OverloadedStrings
-                       RecordWildCards
-                       ViewPatterns
-  -- other-extensions:
-  build-depends:       base >=4.13,
-                       aeson,
-                       binary,
-                       blaze-colonnade,
-                       blaze-html,
-                       blaze-markup,
-                       bytestring,
-                       cassava,
-                       colonnade,
-                       conduit >= 1.3,
-                       containers,
-                       directory,
-                       resourcet,
-                       filepath,
-                       optparse-applicative,
-                       process,
-                       text,
-                       text-show,
-                       these,
-                       vector
-  ghc-options: -Wall
-  default-language:    Haskell2010
+--  autogen-modules:     Paths_ghc_timings
+  hs-source-dirs:      exe
+  build-depends:       base >=4.13
+                     , ghc-timings
+                     , aeson
+                     , bytestring
+                     , optparse-applicative
+
+
+-- executable ghc-timings
+--   main-is:             Main.hs
+--   autogen-modules:     Paths_ghc_timings
+--   other-modules:       Compare
+--                        GhcFile
+--                        GhcBuildPhase
+--                        Generate
+--                        Report
+--                        Paths_ghc_timings
+--   hs-source-dirs:      src
+--                        .
+--   default-extensions:  DerivingStrategies
+--                        DeriveGeneric
+--                        DeriveAnyClass
+--                        DerivingVia
+--                        LambdaCase
+--                        OverloadedStrings
+--                        RecordWildCards
+--                        ViewPatterns
+--   -- other-extensions:
+--   build-depends:       base >=4.13,
+--                        aeson,
+--                        binary,
+--                        blaze-colonnade,
+--                        blaze-html,
+--                        blaze-markup,
+--                        bytestring,
+--                        cassava,
+--                        colonnade,
+--                        conduit >= 1.3,
+--                        containers,
+--                        directory,
+--                        resourcet,
+--                        filepath,
+--                        optparse-applicative,
+--                        process,
+--                        text,
+--                        text-show,
+--                        these,
+--                        vector
+--   ghc-options: -Wall
+--   default-language:    Haskell2010
