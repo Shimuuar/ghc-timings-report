@@ -24,11 +24,12 @@ library
                        DerivingVia
                        LambdaCase
                        ImportQualifiedPost
-  build-depends:       base      >= 4.13
-                     , aeson     >= 2
+  build-depends:       base            >= 4.13
+                     , aeson           >= 2
                      , cassava
-                     , text      >= 2
-                     , streaming >= 0.2
+                     , regex-applicative >=0.3.4
+                     , text            >= 2
+                     , streaming       >= 0.2
                      , containers
                      , transformers
                      , filepath

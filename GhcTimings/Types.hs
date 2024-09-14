@@ -1,4 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE NoFieldSelectors      #-}
 -- |
 module GhcTimings.Types where
 
@@ -45,9 +46,10 @@ data Component = Component
 
 -- | Single build phase that is reported in the ghc timings output.
 data Phase = Phase
-  { name   :: !Text   -- ^ Name of phase
-  , alloc  :: !Int    -- ^ Allocation amount
-  , time   :: !Double -- ^ Time spent
+  { name   :: !Text         -- ^ Name of phase
+  , mod    :: !(Maybe Text) -- ^ Module information
+  , alloc  :: !Int          -- ^ Allocation amount
+  , time   :: !Double       -- ^ Time spent
   }
   deriving stock    (Generic, Eq, Show)
   deriving anyclass (ToJSON, FromJSON)
