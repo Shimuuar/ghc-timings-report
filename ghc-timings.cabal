@@ -25,6 +25,7 @@ common extensions
                        DerivingVia
                        LambdaCase
                        DeriveAnyClass
+                       MultiWayIf
                        --
                        NoFieldSelectors
                        DuplicateRecordFields

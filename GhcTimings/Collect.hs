@@ -1,6 +1,7 @@
-{-# LANGUAGE ApplicativeDo   #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ViewPatterns    #-}
+{-# LANGUAGE ApplicativeDo     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE ViewPatterns      #-}
 -- |
 -- Collection of 
 module GhcTimings.Collect
@@ -148,14 +149,19 @@ parsePhases
 
 rePhaseModule :: RE Char Phase
 rePhaseModule = do
-  name <- few $ psym (`notElem` ("[]"::String))
+  name <- fmap T.pack $ few $ psym (`notElem` ("[]"::String))
   mod  <- skipWS *> sym '['
        *> (  Just . T.pack <$> some (psym (\c -> isAlphaNum c || c == '.'))
          <|> Nothing       <$  some (psym (`notElem` ("[]"::String)))
           )
        <* string "]:"
   (alloc,time) <- reAllocTime
-  pure Phase{ name  = T.pack name
+  pure Phase{ name = if
+                | name == "Float out(FOS {Lam = Just 0, Consts = True, OverSatApps = False})" ->
+                  "Float out{OverSatApps=False}"
+                | name == "Float out(FOS {Lam = Just 0, Consts = True, OverSatApps = True})" ->
+                  "Float out{OverSatApps=True}"
+                | otherwise -> name
             , ..
             }
 
