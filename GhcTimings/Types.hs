@@ -1,6 +1,7 @@
 -- |
 module GhcTimings.Types where
 
+import Control.Lens
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
@@ -85,3 +86,16 @@ parseCompName str = case T.unpack str of
   'b':'/':s -> pure $ Bench  s
   "build"   -> pure MainLib
   s         -> fail $ "Incorect CompName:" ++ s
+
+
+----------------------------------------------------------------
+-- Lens helpers
+----------------------------------------------------------------
+
+allPhases :: Fold ([Phase], Map Text [Phase]) Phase
+allPhases = chainFolds
+  (_1 . each)
+  (_2 . each . each)
+
+chainFolds :: Fold s a -> Fold s a -> Fold s a
+chainFolds fold1 fold2 fA s = fold1 fA s *> fold2 fA s 

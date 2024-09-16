@@ -12,6 +12,7 @@ import Data.List                        (intercalate)
 import Data.Map.Strict                  (Map)
 import Data.Map.Strict                  qualified as Map
 import Data.Text                        (Text)
+import Data.Text                        qualified as T
 import Data.Text.Lazy.Builder           (Builder)
 import Data.Text.Lazy.Builder.RealFloat (formatRealFloat,FPFormat(..))
 import Text.Blaze.Colonnade
@@ -22,21 +23,35 @@ import Text.Blaze.Html5.Attributes qualified as A
 
 import GhcTimings.Types
 
-index :: [Package a] -> Markup -- TODO: use T.Text
+index :: [Package ([Phase], Map Text [Phase])] -> Markup
 index packages = docTypeHtml $ do
   H.head $ do
     title "GHC timings report"
     H.link ! A.rel "stylesheet"
            ! A.type_ "text/css"
            ! A.href "./main.css"
-  body ! A.style "width: 500px; margin: 0px auto 0px auto;" $ do
+  body $ do
     h1 "Packages"
-    p $ do
-      "List of the packages in the project"
-    ul $ for_ packages $ \pkg ->
-         li
-            $ a ! A.href (fromString $ "./" <> pkg.name <> ".html")
-                $ toMarkup pkg.name
+    let tbl = TimeTable
+          { title    = "Module"
+          , totAlloc = sumOf (each . to (.components) . each . allPhases . to (.alloc))
+              packages
+          , totTime  = sumOf (each . to (.components) . each . allPhases . to (.time))
+              packages
+          , getName  = view _1
+          , getAlloc = view _2
+          , getTime  = view _3
+          }
+    for_ packages $ \pkg -> do
+      h2 $ a ! A.href (fromString $ "./" <> pkg.name <> ".html")
+         $ toMarkup pkg.name
+      encodeTimeTable tbl mempty
+        [ ( toMarkup $ show nm
+          , sumOf (allPhases . to (.alloc)) comp
+          , sumOf (allPhases . to (.time))  comp
+          )
+        | (nm,comp) <- Map.toList pkg.components
+        ]
 
 
 package :: Package ([Phase], Map Text [Phase]) -> Markup
@@ -47,37 +62,87 @@ package pkg = docTypeHtml $ do
            ! A.type_ "text/css"
            ! A.href "./main.css"
   --
-  h1 $ fromString pkg.name
-  p  $ H.a ! A.href "./index.html" $ "index"
-  -- Per-module time/allocation
-  for_ (Map.toList pkg.components) $ \(name,(no_mod,mods)) -> do
-    h2 $ fromString $ show name
-    let tot_alloc = sumOf (each .        to (.alloc)) no_mod
-                  + sumOf (each . each . to (.alloc)) mods
-        tot_time  = sumOf (each .        to (.time))  no_mod
-                  + sumOf (each . each . to (.time))  mods
-    encodeCellTable mempty
-      (mconcat
-       [ headed (headerCell "Module")
-           (\(nm,_,_) -> moduleCell $ toMarkup nm)
-       , headed (headerCell "ALLOC")
-           (\(_,alloc,_) -> numberCell $ toMarkup $ formatBigInt alloc)
-       , headed (headerCell "(%)")
-           (\(_,alloc,_) -> numberCell $ toMarkup
-             $ formatF1 (100 * fromIntegral alloc / fromIntegral tot_alloc) <> "%")
-       , headed (headerCell "Time (ms)")
-           (\(_,_,time) -> numberCell $ toMarkup
-                         $ formatF1 time <> "ms")
-       , headed (headerCell "(%)")
-           (\(_,_,time) -> numberCell $ toMarkup
-                         $ formatF1 (100 * time / tot_time) <> "%" )
-       ])
-      [ ( nm
-        , sumOf (each . to (.alloc)) row
-        , sumOf (each . to (.time))  row
-        )
-      | (nm,row) <- ("-",no_mod) : Map.toList mods
-      ]
+  body $ do
+    h1 $ fromString pkg.name
+    p  $ H.a ! A.href "./index.html" $ "index"
+    -- Per-module time/allocation
+    for_ (Map.toList pkg.components) $ \(name, all_mods@(no_mod,mods)) -> do
+      h2 $ fromString $ show name
+      let tbl = TimeTable
+            { title    = "Module"
+            , totAlloc = sumOf (allPhases . to (.alloc)) all_mods
+            , totTime  = sumOf (allPhases . to (.time))  all_mods
+            , getName  = view _1
+            , getAlloc = view _2
+            , getTime  = view _3
+            }
+      encodeTimeTable tbl mempty
+        [ ( ( if nm == "-"
+              then id
+              else H.a ! A.href (textValue $ nm <> ".html"))
+            $ toMarkup nm
+          , sumOf (each . to (.alloc)) row
+          , sumOf (each . to (.time))  row
+          )
+        | (nm,row) <- ("-",no_mod) : Map.toList mods
+        ]
+
+modulePage :: Text -> [Phase] -> Markup
+modulePage mod_name phases = do
+  H.head $ do
+    title $ toMarkup $ "GHC timings report: " <> mod_name
+    H.link ! A.rel "stylesheet"
+           ! A.type_ "text/css"
+           ! A.href "./main.css"
+  body $ do
+    h1 $ toMarkup mod_name
+    let tbl = TimeTable
+          { title    = "Phase"
+          , totAlloc = sumOf (each . to (.alloc)) phases
+          , totTime  = sumOf (each . to (.time))  phases
+          , getName  = toMarkup . (.name) . snd
+          , getAlloc = (.alloc) . snd
+          , getTime  = (.time)  . snd
+          }
+    encodeTimeTable tbl
+      (headed (headerCell "N") (numberCell . toMarkup . fst))
+      ([1::Int ..] `zip` phases)
+
+
+data TimeTable a = TimeTable
+  { title    :: !Text
+  , totAlloc :: !Int
+  , totTime  :: !Double
+  , getName  :: a -> Html
+  , getAlloc :: a -> Int
+  , getTime  :: a -> Double
+  }
+
+encodeTimeTable :: TimeTable a -> Colonnade Headed a Cell -> [a] -> Html
+encodeTimeTable tbl prefix
+  = encodeCellTable mempty
+  $ mconcat
+    [ prefix
+    , headed (headerCell tbl.title)
+             (moduleCell . tbl.getName)
+    , headed (headerCell "ALLOC")
+        (numberCell . formatBigInt . tbl.getAlloc)
+    , headed (headerCell "(%)")
+        (\x -> numberCell $ toMarkup
+          $ formatF1 (100 * fromIntegral (tbl.getAlloc x) / tot_alloc) <> "%")
+    , headed (headerCell "Time (ms)")
+        (\x -> numberCell $ toMarkup $ formatF1 (tbl.getTime x) <> "ms")
+    , headed (headerCell "(%)")
+        (\x -> numberCell $ toMarkup
+             $ formatF1 (100 * (tbl.getTime x) / tot_time) <> "%" )
+    ]
+  where
+    tot_alloc = fromIntegral tbl.totAlloc :: Double
+    tot_time  = tbl.totTime               :: Double
+
+----------------------------------------------------------------
+-- Helpers
+----------------------------------------------------------------
 
 moduleCell,numberCell :: Html -> Cell
 moduleCell x = (htmlCell x){ cellAttribute = A.class_ "module" }
@@ -87,11 +152,10 @@ headerCell :: Text -> Cell
 headerCell x = (textCell x){ cellAttribute = A.scope "col" <> A.class_ "header"
                            }
 
-
-
-
-formatBigInt :: Int -> String
-formatBigInt = reverse . intercalate " " . chunksOf 3 . reverse . show 
+formatBigInt :: Int -> Markup
+formatBigInt = preEscapedToMarkup . reverse . intercalate (reverse "&nbsp;") . chunksOf 3 . reverse . show 
 
 formatF1 :: Double -> Builder
 formatF1 = formatRealFloat Fixed (Just 1)
+
+

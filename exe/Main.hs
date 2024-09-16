@@ -5,7 +5,9 @@ import Control.Monad
 import Data.Aeson               qualified as JSON
 import Data.ByteString.Lazy     qualified as BL
 import Data.Map.Strict          (Map)
+import Data.Map.Strict          qualified as Map
 import Data.Text                (Text)
+import Data.Text                qualified as T
 import Data.Foldable
 import Options.Applicative
 import Text.Blaze.Renderer.Utf8 (renderMarkup)
@@ -64,10 +66,17 @@ genReport = do
       Just pkgs -> pure pkgs
     --
     createDirectoryIfMissing True out
+    copyFile "files/main.css" (out </> "main.css") -- TODO use data files
+    -- Top level
     mkHtmlFile (out </> "index.html") $ Report.index pkgs
+    -- Reports for each package
     for_ pkgs $ \pkg ->
       mkHtmlFile (out </> pkg.name <.> "html") $ Report.package pkg
-    copyFile "files/main.css" (out </> "main.css") -- TODO use data files
+    -- Report for each module
+    for_ pkgs $ \pkg ->
+      for_ pkg.components $ \(_, cmp) -> do
+        for_ (Map.toList cmp) $ \(nm,phases) -> do
+          mkHtmlFile (out </> T.unpack nm <.> "html") $ Report.modulePage nm phases
 
 mkHtmlFile :: FilePath -> Markup -> IO ()
 mkHtmlFile nm markup = do
