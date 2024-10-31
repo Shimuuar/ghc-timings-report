@@ -7,8 +7,9 @@ import Colonnade
 import Control.Lens
 import Data.Foldable
 import Data.String
+import Data.Ord                         (Down(..))
 import Data.List.Split                  (chunksOf)
-import Data.List                        (intercalate)
+import Data.List                        (intercalate,sortOn)
 import Data.Map.Strict                  (Map)
 import Data.Map.Strict                  qualified as Map
 import Data.Text                        (Text)
@@ -96,17 +97,36 @@ modulePage mod_name phases = do
            ! A.href "./main.css"
   body $ do
     h1 $ toMarkup mod_name
-    let tbl = TimeTable
-          { title    = "Phase"
-          , totAlloc = sumOf (each . to (.alloc)) phases
-          , totTime  = sumOf (each . to (.time))  phases
-          , getName  = toMarkup . (.name) . snd
-          , getAlloc = (.alloc) . snd
-          , getTime  = (.time)  . snd
-          }
-    encodeTimeTable tbl
+    h2 $ "Phases"
+    encodeTimeTable tbl1
       (headed (headerCell "N") (numberCell . toMarkup . fst))
       ([1::Int ..] `zip` phases)
+    h2 $ "By phase"
+    encodeTimeTable tbl2 mempty
+      ( sortOn (\(_,(_,t)) -> Down t)
+      $ Map.toList
+      $ Map.fromListWith (\(a1,t1) (a2,t2) -> (a1+a2,t1+t2))
+        [ (p.name, (p.alloc, p.time))
+        | p <- phases
+        ]
+      )
+  where
+    tbl1 = TimeTable
+      { title    = "Phase"
+      , totAlloc = sumOf (each . to (.alloc)) phases
+      , totTime  = sumOf (each . to (.time))  phases
+      , getName  = toMarkup . (.name) . snd
+      , getAlloc = (.alloc) . snd
+      , getTime  = (.time)  . snd
+      }
+    tbl2 = TimeTable
+      { title    = "Phase"
+      , totAlloc = sumOf (each . to (.alloc)) phases
+      , totTime  = sumOf (each . to (.time))  phases
+      , getName  = toMarkup . view _1
+      , getAlloc = view (_2 . _1)
+      , getTime  = view (_2 . _2)
+      }
 
 
 data TimeTable a = TimeTable

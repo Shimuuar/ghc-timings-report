@@ -54,7 +54,7 @@ loadDumpTimings
       pure ( [ p | (Nothing, ps) <- phases
                  , p <- ps
                  ]
-           , Map.fromList [ (k,v) | (Just k, v) <- phases ]
+           , Map.fromListWith (<>) [ (k,v) | (Just k, v) <- phases ]
            )
 
 
